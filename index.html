@@ -1,0 +1,1108 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Laboratório de Ligações Químicas — hibridização, geometria e polaridade</title>
+<style>
+/* ============================================================
+   TOKENS VISUAIS
+   Paleta derivada das cores CPK dos átomos (padrão de química),
+   sobre um fundo de "câmara escura" azul-petróleo.
+   ============================================================ */
+:root{
+  --bg:#070c14;
+  --bg-2:#0d1522;
+  --ink:#e9f0f8;
+  --ink-dim:#93a3b8;
+  --line:#1d2a3c;
+  --sigma:#59e0d2;      /* ligação sigma  */
+  --pi:#c07bff;         /* ligação pi     */
+  --lone:#7fd4ff;       /* par não ligante*/
+  --dipole:#ffb648;     /* vetores de dipolo */
+  --hot:#ff6b6b;
+  --focus:#ffd166;
+  --radius:14px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; background:
+    radial-gradient(1200px 700px at 15% -10%, #12233b 0%, transparent 60%),
+    radial-gradient(900px 600px at 110% 110%, #1a1430 0%, transparent 55%),
+    var(--bg);
+  color:var(--ink);
+  font-family:"Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  font-size:16px; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{font-family:Georgia,"Iowan Old Style","Times New Roman",serif; font-weight:600; letter-spacing:.1px; margin:0}
+button{font:inherit; color:inherit}
+sub,sup{font-size:.68em}
+
+/* ---------- cabeçalho ---------- */
+header{
+  padding:18px clamp(14px,3vw,32px) 10px;
+  border-bottom:1px solid var(--line);
+  display:flex; flex-wrap:wrap; gap:14px 22px; align-items:baseline; justify-content:space-between;
+}
+header h1{font-size:clamp(20px,2.4vw,27px)}
+header h1 small{display:block; font-family:inherit; font-size:14px; font-weight:400; color:var(--ink-dim); font-style:italic; margin-top:3px}
+#molBar{display:flex; flex-wrap:wrap; gap:8px}
+.mol-chip{
+  border:1px solid var(--line); background:#0f1a2a; border-radius:999px;
+  padding:7px 14px; cursor:pointer; display:flex; align-items:center; gap:8px;
+  transition:border-color .18s, background .18s, transform .18s;
+}
+.mol-chip .dot{width:9px;height:9px;border-radius:50%;box-shadow:0 0 9px currentColor;background:currentColor}
+.mol-chip b{font-weight:600}
+.mol-chip span.sub{color:var(--ink-dim); font-size:12.5px}
+.mol-chip:hover{background:#152438}
+.mol-chip[aria-pressed="true"]{border-color:#3f6ea8; background:#16273e; box-shadow:inset 0 0 0 1px #23405f}
+.mol-chip:focus-visible, button:focus-visible, select:focus-visible{outline:2px solid var(--focus); outline-offset:2px}
+
+/* ---------- layout principal ---------- */
+main{
+  display:grid; grid-template-columns:minmax(0,1.55fr) minmax(320px,.95fr);
+  gap:0; height:calc(100dvh - 84px); min-height:520px;
+}
+.stage{position:relative; min-height:340px; overflow:hidden}
+canvas{display:block; width:100%; height:100%; touch-action:none; cursor:grab}
+canvas.dragging{cursor:grabbing}
+
+.badge{
+  position:absolute; top:14px; left:16px; z-index:2;
+  background:rgba(9,16,26,.78); border:1px solid var(--line); border-radius:10px;
+  padding:7px 12px; font-size:13.5px; backdrop-filter:blur(6px);
+}
+.badge b{color:var(--sigma)}
+.bar{height:3px; margin-top:7px; background:#182437; border-radius:3px; overflow:hidden}
+.bar i{display:block; height:100%; background:linear-gradient(90deg,var(--sigma),var(--pi)); transition:width .45s ease}
+
+#legend{
+  position:absolute; right:14px; top:14px; z-index:2; max-width:210px;
+  background:rgba(9,16,26,.78); border:1px solid var(--line); border-radius:10px;
+  padding:10px 12px; font-size:12.5px; backdrop-filter:blur(6px);
+}
+#legend h3{font-size:13px; margin-bottom:7px; color:var(--ink-dim); font-family:inherit; font-weight:600}
+#legend ul{list-style:none; margin:0; padding:0; display:grid; gap:5px}
+#legend li{display:flex; align-items:center; gap:8px; color:#cddaea}
+#legend .sw{width:15px;height:9px;border-radius:3px;flex:0 0 auto}
+#legend .sw.round{width:11px;height:11px;border-radius:50%}
+.hint{
+  position:absolute; left:16px; bottom:14px; z-index:2; font-size:12.5px; color:var(--ink-dim);
+  background:rgba(9,16,26,.7); border:1px solid var(--line); border-radius:9px; padding:6px 11px;
+}
+
+/* ---------- painel ---------- */
+aside{
+  border-left:1px solid var(--line); background:linear-gradient(180deg,#0a111d,#080d16);
+  display:flex; flex-direction:column; min-height:0;
+}
+.panel-scroll{overflow-y:auto; padding:20px clamp(16px,2vw,24px) 8px; flex:1; min-height:0}
+.step-kicker{font-size:12.5px; color:var(--sigma); letter-spacing:.4px; margin-bottom:4px}
+#stepTitle{font-size:21px; line-height:1.25; margin-bottom:10px}
+#stepBody{font-size:15px; color:#d3dde9; max-width:62ch}
+#stepBody p{margin:0 0 11px}
+#stepBody em{color:#fff; font-style:normal; border-bottom:1px dotted #3d556f}
+.tag{display:inline-block; border-radius:6px; padding:1px 7px; font-size:13px; background:#152134; border:1px solid var(--line)}
+
+/* diagrama de orbitais */
+.orbdiag{margin:14px 0 4px; border:1px solid var(--line); border-radius:var(--radius); padding:13px; background:#0b1420}
+.orbstage{display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap}
+.orbstage + .orbarrow{color:var(--ink-dim); text-align:center; font-size:19px; margin:7px 0}
+.orbrow{display:flex; flex-direction:column; align-items:center; gap:5px}
+.orbboxes{display:flex; gap:4px}
+.obox{width:26px;height:20px;border:1px solid #3a5573; border-radius:4px; display:flex; align-items:center; justify-content:center;
+  font-size:13px; color:var(--lone); background:#0e1a28; letter-spacing:-1px}
+.obox.hy{border-color:#6b4b93; color:#dcb6ff; background:#160e22}
+.orblabel{font-size:12px; color:var(--ink-dim)}
+.orbcap{font-size:12.5px; color:var(--ink-dim); margin-bottom:9px}
+
+/* ficha final */
+.card{margin:14px 0 4px; border:1px solid var(--line); border-radius:var(--radius); overflow:hidden}
+.card h3{font-size:15px; padding:10px 13px; background:#101c2c; border-bottom:1px solid var(--line)}
+.card dl{margin:0; display:grid; grid-template-columns:auto 1fr}
+.card dt{padding:8px 13px; color:var(--ink-dim); font-size:13.5px; border-bottom:1px solid #131f2e}
+.card dd{margin:0; padding:8px 13px; font-size:14px; border-bottom:1px solid #131f2e; text-align:right}
+.card dl > :nth-last-child(-n+2){border-bottom:0}
+.struct{font-family:"Cascadia Mono",Consolas,"DejaVu Sans Mono",monospace; font-size:18px; letter-spacing:1px;
+  padding:14px 13px; text-align:center; color:#fff; background:#0b1420; white-space:pre; line-height:1.35}
+
+/* ---------- controles ---------- */
+.controls{border-top:1px solid var(--line); padding:12px clamp(14px,2vw,20px) 16px; background:#080e18; display:grid; gap:10px}
+.row{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+.btn{
+  border:1px solid var(--line); background:#111d2c; border-radius:10px; padding:9px 14px; cursor:pointer;
+  display:inline-flex; align-items:center; gap:7px; transition:background .16s, border-color .16s;
+}
+.btn:hover:not(:disabled){background:#182b41; border-color:#2d4a6b}
+.btn:disabled{opacity:.4; cursor:not-allowed}
+.btn.primary{background:#12352f; border-color:#1f6157; color:#b7f5ea}
+.btn.primary:hover{background:#17453d}
+.btn.icon{padding:9px 12px}
+.seg{display:flex; border:1px solid var(--line); border-radius:10px; overflow:hidden}
+.seg button{background:#101b29; border:0; padding:9px 12px; cursor:pointer; font-size:13.5px; color:var(--ink-dim)}
+.seg button + button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:#1c3350; color:#fff}
+.ctrl-label{font-size:12.5px; color:var(--ink-dim); margin-right:2px}
+
+@media (max-width:900px){
+  main{grid-template-columns:1fr; grid-template-rows:minmax(300px,46dvh) auto; height:auto}
+  .stage{height:46dvh}
+  aside{border-left:0; border-top:1px solid var(--line)}
+  .panel-scroll{max-height:none}
+  #legend{max-width:150px; font-size:11.5px; padding:8px}
+  .controls{position:sticky; bottom:0}
+}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms !important; transition-duration:.01ms !important}}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Laboratório de ligações químicas
+    <small>Do átomo isolado à molécula: hibridização, ligações σ e π, geometria VSEPR e polaridade.</small>
+  </h1>
+  <nav id="molBar" aria-label="Escolha da molécula"></nav>
+</header>
+
+<main>
+  <section class="stage">
+    <div class="badge" role="status" aria-live="polite">
+      <span>Etapa <b id="stepNum">1</b> de <b id="stepTotal">7</b></span>
+      <div class="bar"><i id="progFill" style="width:14%"></i></div>
+    </div>
+
+    <div id="legend">
+      <h3>Legenda</h3>
+      <ul id="legendList"></ul>
+    </div>
+
+    <canvas id="scene" aria-label="Animação tridimensional da formação da molécula"></canvas>
+    <p class="hint">Arraste para girar a molécula · setas ← → mudam de etapa</p>
+  </section>
+
+  <aside>
+    <div class="panel-scroll">
+      <p class="step-kicker" id="stepKicker">Água · H₂O</p>
+      <h2 id="stepTitle">Átomos isolados</h2>
+      <div id="stepBody"></div>
+      <div id="extra"></div>
+    </div>
+
+    <div class="controls">
+      <div class="row">
+        <button class="btn icon" id="btnPrev" title="Etapa anterior" aria-label="Etapa anterior">◀</button>
+        <button class="btn primary" id="btnPlay">▶ Automático</button>
+        <button class="btn icon" id="btnNext" title="Próxima etapa" aria-label="Próxima etapa">▶</button>
+        <button class="btn" id="btnReset">↺ Reiniciar</button>
+      </div>
+      <div class="row">
+        <span class="ctrl-label">Velocidade</span>
+        <div class="seg" id="speedSeg" role="group" aria-label="Velocidade da animação">
+          <button data-speed="0.5">0,5×</button>
+          <button data-speed="1" aria-pressed="true">1×</button>
+          <button data-speed="2">2×</button>
+        </div>
+        <button class="btn" id="btnTop" style="margin-left:auto">⇧ Trocar molécula</button>
+      </div>
+    </div>
+  </aside>
+</main>
+
+<script>
+"use strict";
+/* ============================================================================
+   1. BANCO DE DADOS DAS MOLÉCULAS
+   Cada molécula é um objeto independente. Para acrescentar uma nova espécie,
+   basta copiar um bloco e ajustar átomos, ligações e textos — o restante do
+   programa (render, etapas, painel) funciona genericamente.
+
+   Convenções:
+   pos  -> posição final (unidades de comprimento de ligação, ~1.0)
+   far  -> posição no estado "átomos isolados"
+   mid  -> posição logo após formar as ligações, ANTES do ajuste VSEPR
+   dirs -> direções (vetores unitários) dos lobos híbridos / pares isolados
+   ============================================================================ */
+
+const ELEM = {           // raio de desenho, cor e camadas eletrônicas (K, L, M...)
+  H : {r:.30, color:"#e8f1ff", shells:[1],       en:2.20, name:"hidrogênio"},
+  C : {r:.46, color:"#8fa3b8", shells:[2,4],     en:2.55, name:"carbono"},
+  N : {r:.44, color:"#5b8dff", shells:[2,5],     en:3.04, name:"nitrogênio"},
+  O : {r:.43, color:"#ff5f5f", shells:[2,6],     en:3.44, name:"oxigênio"},
+  Na: {r:.56, color:"#b07cff", shells:[2,8,1],   en:0.93, name:"sódio"},
+  Cl: {r:.50, color:"#66e08a", shells:[2,8,7],   en:3.16, name:"cloro"}
+};
+
+const T = 1/Math.sqrt(3); // componente dos vértices de um tetraedro
+
+const MOLECULES = {
+
+/* ------------------------------- ÁGUA ------------------------------------ */
+h2o:{
+  key:"h2o", name:"Água", formula:"H₂O", tint:"#ff5f5f",
+  subtitle:"covalente polar",
+  atoms:[
+    {el:"O", pos:[0,.25,0],      far:[0,1.75,0]},
+    {el:"H", pos:[-.79,-.36,0],  far:[-2.3,-1.05,0], mid:[-.71,-.46,0]},
+    {el:"H", pos:[ .79,-.36,0],  far:[ 2.3,-1.05,0], mid:[ .71,-.46,0]}
+  ],
+  bonds:[{a:0,b:1,order:1},{a:0,b:2,order:1}],
+  lonePairs:[{atom:0, dirs:[[0,.55,.84],[0,.55,-.84]]}],
+  hybridDirs:{atom:0, dirs:[[-.79,-.61,0],[.79,-.61,0],[0,.55,.84],[0,.55,-.84]]},
+  angles:[{v:0,a:1,b:2,label:"104,5°"}],
+  polar:true, dipoleNote:"resultante aponta para o oxigênio",
+  facts:{ligacao:"Covalente polar · 2 σ (sp³–s)", geometria:"Angular (V)",
+         angulo:"104,5°", hibridizacao:"sp³ no oxigênio", pares:"2 pares não ligantes",
+         polaridade:"Polar (μ ≈ 1,85 D)"},
+  struct:"H—O—H\n     ··\n  (2 pares no O)",
+  hybrid:{
+    caption:"Oxigênio: 1 orbital s + 3 orbitais p → 4 orbitais sp³",
+    stages:[
+      {cap:"Estado fundamental", rows:[{label:"2s",boxes:[2]},{label:"2p",boxes:[2,1,1]}]},
+      {cap:"Após hibridização", rows:[{label:"4 × sp³",boxes:[2,2,1,1],hy:true}]}
+    ]
+  },
+  notes:[
+    "<p>Um átomo de <em>oxigênio</em> (Z = 8) e dois de <em>hidrogênio</em> (Z = 1) ainda separados. Os elétrons giram em camadas: o oxigênio tem 2 elétrons na camada K e <em>6 na camada de valência</em> (camada L), destacada em azul.</p><p>Faltam 2 elétrons para o oxigênio completar o octeto, e 1 para cada hidrogênio atingir a configuração do hélio.</p>",
+    "<p>Os orbitais <em>2s e 2p</em> do oxigênio se misturam e formam <em>quatro orbitais híbridos sp³</em>, com formato de lobo e apontando para os vértices de um tetraedro.</p><p>Dois desses lobos já estão cheios (pares não ligantes, em azul-claro) e dois têm apenas 1 elétron — são eles que farão as ligações.</p>",
+    "<p>Os átomos se aproximam. Cada orbital 1s do hidrogênio <em>se sobrepõe frontalmente</em> a um lobo sp³ semipreenchido do oxigênio.</p><p>Quanto maior a região de sobreposição, mais forte a futura ligação — mas a aproximação para quando a repulsão entre os núcleos equilibra a atração.</p>",
+    "<p>Formam-se <em>duas ligações sigma (σ)</em>, em verde-água. Sigma é toda ligação em que a sobreposição acontece <em>sobre o eixo</em> que une os núcleos.</p><p>Não há ligações pi aqui: cada ligação O—H é simples. O par de elétrons compartilhado fica mais próximo do oxigênio, que é bem mais eletronegativo.</p>",
+    "<p>Pela teoria <em>VSEPR</em>, os quatro pares ao redor do oxigênio (2 ligantes + 2 isolados) se repelem e buscam um arranjo tetraédrico. Como os pares isolados ocupam mais espaço, eles comprimem as ligações.</p><p>O ângulo cai de 109,5° para <em>104,5°</em> e a geometria observada é <em>angular</em>, pois só enxergamos os átomos.</p>",
+    "<p>Cada ligação O—H tem um <em>momento dipolar</em> (seta laranja) apontando do H para o O, mais eletronegativo.</p><p>Como a molécula é angular, os dois vetores <em>não se cancelam</em>: a soma vetorial dá uma resultante para cima. A água é <em>polar</em>, o que explica sua alta tensão superficial e o poder de dissolver sais.</p>",
+    "<p>Resumo da molécula de água. Gire a estrutura com o mouse para perceber que os dois pares não ligantes ficam fora do plano dos hidrogênios.</p>"
+  ]
+},
+
+/* --------------------------- DIÓXIDO DE CARBONO --------------------------- */
+co2:{
+  key:"co2", name:"Gás carbônico", formula:"CO₂", tint:"#8fa3b8",
+  subtitle:"duas ligações duplas",
+  atoms:[
+    {el:"C", pos:[0,0,0],     far:[0,0,0]},
+    {el:"O", pos:[-1.16,0,0], far:[-2.7,.5,0], mid:[-1.3,0,0]},
+    {el:"O", pos:[ 1.16,0,0], far:[ 2.7,-.5,0], mid:[ 1.3,0,0]}
+  ],
+  bonds:[{a:0,b:1,order:2,piAxis:[0,1,0]},{a:0,b:2,order:2,piAxis:[0,0,1]}],
+  lonePairs:[{atom:1,dirs:[[-.5,.85,0],[-.5,-.85,0]]},{atom:2,dirs:[[.5,.85,0],[.5,-.85,0]]}],
+  hybridDirs:{atom:0, dirs:[[-1,0,0],[1,0,0]]},
+  angles:[{v:0,a:1,b:2,label:"180°"}],
+  polar:false, dipoleNote:"os dois vetores se anulam",
+  facts:{ligacao:"Covalente polar · 2 σ + 2 π", geometria:"Linear",
+         angulo:"180°", hibridizacao:"sp no carbono", pares:"nenhum par isolado no C",
+         polaridade:"Apolar (μ = 0)"},
+  struct:"O══C══O",
+  hybrid:{
+    caption:"Carbono: 1 orbital s + 1 orbital p → 2 orbitais sp (sobram 2 p puros para as ligações π)",
+    stages:[
+      {cap:"Fundamental", rows:[{label:"2s",boxes:[2]},{label:"2p",boxes:[1,1,0]}]},
+      {cap:"Excitado", rows:[{label:"2s",boxes:[1]},{label:"2p",boxes:[1,1,1]}]},
+      {cap:"Hibridizado", rows:[{label:"2 × sp",boxes:[1,1],hy:true},{label:"2p puros",boxes:[1,1]}]}
+    ]
+  },
+  notes:[
+    "<p>Um <em>carbono</em> (4 elétrons de valência) entre dois <em>oxigênios</em> (6 elétrons de valência cada). Para completar o octeto, o carbono precisa compartilhar 4 elétrons e cada oxigênio, 2.</p>",
+    "<p>O carbono promove um elétron do 2s para o 2p e depois hibridiza <em>um s com um p</em>, gerando <em>2 orbitais sp</em> em linha reta (180° entre eles).</p><p>Sobram <em>dois orbitais p puros</em>, perpendiculares entre si e ao eixo — eles serão usados nas ligações π.</p>",
+    "<p>Cada oxigênio se aproxima pelo eixo. A sobreposição frontal ocorre entre um lobo sp do carbono e um orbital do oxigênio; ao mesmo tempo, os orbitais p ficam <em>paralelos, lado a lado</em>.</p>",
+    "<p>Cada dupla C=O é formada por <em>uma ligação σ</em> (verde) e <em>uma ligação π</em> (roxa). A π nasce da sobreposição lateral de orbitais p e aparece como duas nuvens acima e abaixo do eixo.</p><p>Repare que as duas ligações π usam planos perpendiculares: uma no plano vertical, outra no horizontal. A ligação π é mais fraca que a σ — por isso é ela que se rompe primeiro nas reações.</p>",
+    "<p>Com apenas <em>duas nuvens eletrônicas</em> ao redor do carbono e nenhum par isolado, a repulsão máxima coloca os oxigênios em lados opostos: geometria <em>linear</em>, ângulo de <em>180°</em>.</p>",
+    "<p>Cada ligação C=O é <em>polar</em>: o oxigênio puxa os elétrons. Mas os dois vetores têm mesmo módulo, mesma direção e <em>sentidos opostos</em>.</p><p>A soma vetorial é <em>zero</em>: o CO₂ é uma molécula <em>apolar formada por ligações polares</em>. É por isso que ele é pouco solúvel em água e se dissolve bem em solventes apolares.</p>",
+    "<p>Resumo do dióxido de carbono. Gire a estrutura para ver os dois sistemas π em planos perpendiculares.</p>"
+  ]
+},
+
+/* -------------------------------- METANO --------------------------------- */
+ch4:{
+  key:"ch4", name:"Metano", formula:"CH₄", tint:"#8fa3b8",
+  subtitle:"hibridização sp³",
+  atoms:[
+    {el:"C", pos:[0,0,0], far:[0,0,0]},
+    {el:"H", pos:[ T*1.09, T*1.09, T*1.09], far:[ 1.9, 1.9, .8], mid:[1.09,0,0]},
+    {el:"H", pos:[ T*1.09,-T*1.09,-T*1.09], far:[ 1.9,-1.9,-.8], mid:[-1.09,0,0]},
+    {el:"H", pos:[-T*1.09, T*1.09,-T*1.09], far:[-1.9, 1.9,-.8], mid:[0,1.09,0]},
+    {el:"H", pos:[-T*1.09,-T*1.09, T*1.09], far:[-1.9,-1.9, .8], mid:[0,-1.09,0]}
+  ],
+  bonds:[{a:0,b:1,order:1},{a:0,b:2,order:1},{a:0,b:3,order:1},{a:0,b:4,order:1}],
+  lonePairs:[],
+  hybridDirs:{atom:0, dirs:[[T,T,T],[T,-T,-T],[-T,T,-T],[-T,-T,T]]},
+  angles:[{v:0,a:1,b:2,label:"109,5°"}],
+  polar:false, dipoleNote:"a simetria tetraédrica anula tudo",
+  facts:{ligacao:"Covalente pouco polar · 4 σ (sp³–s)", geometria:"Tetraédrica",
+         angulo:"109,5°", hibridizacao:"sp³ no carbono", pares:"nenhum par isolado",
+         polaridade:"Apolar (μ = 0)"},
+  struct:"      H\n      |\n  H — C — H\n      |\n      H",
+  hybrid:{
+    caption:"Carbono: 1 orbital s + 3 orbitais p → 4 orbitais sp³ idênticos",
+    stages:[
+      {cap:"Fundamental", rows:[{label:"2s",boxes:[2]},{label:"2p",boxes:[1,1,0]}]},
+      {cap:"Excitado", rows:[{label:"2s",boxes:[1]},{label:"2p",boxes:[1,1,1]}]},
+      {cap:"Hibridizado", rows:[{label:"4 × sp³",boxes:[1,1,1,1],hy:true}]}
+    ]
+  },
+  notes:[
+    "<p>Um <em>carbono</em> com 4 elétrons de valência e quatro <em>hidrogênios</em> com 1 elétron cada. Note que, no estado fundamental, o carbono teria só 2 elétrons desemparelhados — não bastaria para 4 ligações.</p>",
+    "<p>A solução é a <em>hibridização</em>: um elétron do 2s é promovido ao 2p e, em seguida, os quatro orbitais se misturam.</p><p>Nascem <em>4 orbitais sp³ equivalentes</em>, cada um com 1 elétron, apontando para os vértices de um tetraedro. Isso explica por que as quatro ligações C—H têm exatamente a mesma energia e o mesmo comprimento.</p>",
+    "<p>Os hidrogênios se aproximam pelas quatro direções. Cada orbital <em>1s</em> encontra frontalmente um lobo <em>sp³</em>.</p>",
+    "<p>Formam-se <em>quatro ligações sigma</em> sp³–s. Não existe ligação π no metano: todas as ligações são simples e permitem <em>rotação livre</em>.</p>",
+    "<p>As quatro nuvens eletrônicas se repelem igualmente. O arranjo de menor energia não é plano (que daria 90°), e sim o <em>tetraedro</em>, com <em>109,5°</em> entre quaisquer duas ligações.</p><p>Acompanhe os hidrogênios saindo do plano e abrindo no espaço.</p>",
+    "<p>A ligação C—H é levemente polar (ΔEN ≈ 0,35), mas os quatro vetores apontam para os vértices de um tetraedro e <em>se cancelam</em> exatamente.</p><p>Resultante <em>nula</em>: o metano é <em>apolar</em>, insolúvel em água e gasoso à temperatura ambiente.</p>",
+    "<p>Resumo do metano. Gire a estrutura: em qualquer direção que você olhe, o arranjo é simétrico — a marca registrada de uma molécula apolar.</p>"
+  ]
+},
+
+/* ------------------------------- AMÔNIO ---------------------------------- */
+nh4:{
+  key:"nh4", name:"Íon amônio", formula:"NH₄⁺", tint:"#5b8dff",
+  subtitle:"ligação dativa",
+  charge:"+1",
+  atoms:[
+    {el:"N", pos:[0,0,0], far:[0,0,0], charge:""},
+    {el:"H", pos:[ T*1.03, T*1.03, T*1.03], far:[ 1.8, 1.8, .7]},
+    {el:"H", pos:[ T*1.03,-T*1.03,-T*1.03], far:[ 1.8,-1.8,-.7]},
+    {el:"H", pos:[-T*1.03, T*1.03,-T*1.03], far:[-1.8, 1.8,-.7]},
+    {el:"H", pos:[-T*1.03,-T*1.03, T*1.03], far:[-2.6,-2.6, 1.4], charge:"+", noElectrons:true}
+  ],
+  bonds:[{a:0,b:1,order:1},{a:0,b:2,order:1},{a:0,b:3,order:1},{a:0,b:4,order:1,dative:true}],
+  lonePairs:[{atom:0, dirs:[[-T,-T,T]], onlyUntilStep:3}],
+  hybridDirs:{atom:0, dirs:[[T,T,T],[T,-T,-T],[-T,T,-T],[-T,-T,T]]},
+  angles:[{v:0,a:1,b:2,label:"109,5°"}],
+  polar:false, dipoleNote:"os quatro vetores se cancelam; a carga +1 é do íon inteiro",
+  facts:{ligacao:"3 σ normais + 1 σ dativa", geometria:"Tetraédrica",
+         angulo:"≈109,5°", hibridizacao:"sp³ no nitrogênio", pares:"nenhum par isolado restante",
+         polaridade:"Íon (cátion poliatômico, carga +1)"},
+  struct:"      H       ⁺\n      |\n  H — N → H\n      |\n      H",
+  hybrid:{
+    caption:"Nitrogênio: 4 orbitais sp³ — três com 1 elétron e um com o par que será doado",
+    stages:[
+      {cap:"Fundamental", rows:[{label:"2s",boxes:[2]},{label:"2p",boxes:[1,1,1]}]},
+      {cap:"Hibridizado", rows:[{label:"4 × sp³",boxes:[2,1,1,1],hy:true}]}
+    ]
+  },
+  notes:[
+    "<p>À esquerda, a molécula de <em>amônia</em> (NH₃) em construção: o nitrogênio tem 5 elétrons de valência, faz 3 ligações e ainda guarda <em>um par isolado</em>.</p><p>À direita, um <em>próton H⁺</em>: um hidrogênio que perdeu seu único elétron. Ele tem carga positiva e um orbital 1s <em>completamente vazio</em>.</p>",
+    "<p>O nitrogênio hibridiza em <em>sp³</em>. Três lobos ficam com 1 elétron cada (farão ligações normais) e um lobo fica com <em>o par completo</em>, destacado em azul-claro.</p>",
+    "<p>Os três hidrogênios neutros se aproximam e formam a amônia. O <em>H⁺</em>, atraído pela nuvem negativa, aproxima-se justamente do lobo que carrega o par isolado.</p>",
+    "<p>Três ligações σ comuns são formadas com <em>um elétron de cada átomo</em>. A quarta é diferente: o <em>nitrogênio doa os dois elétrons</em> do par isolado ao orbital vazio do H⁺.</p><p>É a <em>ligação covalente dativa</em> (ou coordenada), representada por uma seta N→H e desenhada tracejada em amarelo.</p>",
+    "<p>Agora há <em>quatro pares ligantes</em> e nenhum par isolado. A geometria é <em>tetraédrica perfeita</em>, com ângulos de 109,5° — maiores que os 107° da amônia, porque o par isolado que comprimia as ligações virou ligação.</p><p>Depois de formadas, <em>as quatro ligações são idênticas</em>: não há como descobrir qual delas foi a dativa.</p>",
+    "<p>As quatro ligações N—H são polares, mas a simetria tetraédrica <em>anula a resultante</em>.</p><p>A carga <em>+1</em> não pertence a um átomo específico: ela é do íon inteiro, que ganhou um próton sem ganhar elétrons. Por isso o NH₄⁺ é um <em>íon poliatômico</em>, e não uma molécula polar.</p>",
+    "<p>Resumo do íon amônio, presente em fertilizantes e em produtos de limpeza com amônia.</p>"
+  ]
+},
+
+/* ----------------------------- CLORETO DE SÓDIO --------------------------- */
+nacl:{
+  key:"nacl", name:"Cloreto de sódio", formula:"NaCl", tint:"#b07cff",
+  subtitle:"ligação iônica",
+  ionic:true,
+  atoms:[
+    {el:"Na", pos:[-1.25,0,0], far:[-2.6,0,0], mid:[-1.45,0,0], charge:"+"},
+    {el:"Cl", pos:[ 1.25,0,0], far:[ 2.6,0,0], mid:[ 1.45,0,0], charge:"−"}
+  ],
+  bonds:[{a:0,b:1,order:1,ionic:true}],
+  lonePairs:[],
+  angles:[],
+  polar:true, dipoleNote:"separação total de cargas",
+  facts:{ligacao:"Iônica (transferência de elétron)", geometria:"Retículo cúbico de faces centradas",
+         angulo:"90° entre íons vizinhos", hibridizacao:"não há hibridização",
+         pares:"Cl⁻ com octeto completo", polaridade:"Ligação 100 % iônica (ΔEN = 2,23)"},
+  struct:"Na⁺  [Cl]⁻",
+  hybrid:{
+    caption:"Sem hibridização: o sódio simplesmente perde o elétron 3s¹ e o cloro completa o 3p",
+    stages:[
+      {cap:"Na (3s¹) e Cl (3s² 3p⁵)", rows:[{label:"Na 3s",boxes:[1]},{label:"Cl 3p",boxes:[2,2,1]}]},
+      {cap:"Na⁺ e Cl⁻", rows:[{label:"Na 3s",boxes:[0]},{label:"Cl 3p",boxes:[2,2,2],hy:true}]}
+    ]
+  },
+  stepTitles:["Átomos isolados","Configuração eletrônica e valência","Aproximação dos átomos",
+              "Transferência do elétron","Atração eletrostática e retículo","Caráter iônico","Resumo"],
+  notes:[
+    "<p><em>Sódio</em> (Z = 11): camadas 2, 8, <em>1</em>. Um único elétron na camada de valência, fracamente preso — energia de ionização baixa.</p><p><em>Cloro</em> (Z = 17): camadas 2, 8, <em>7</em>. Falta exatamente 1 elétron para completar o octeto — alta afinidade eletrônica.</p>",
+    "<p>Aqui não há hibridização nem compartilhamento. A diferença de eletronegatividade é enorme (<em>ΔEN = 3,16 − 0,93 = 2,23</em>), acima do limite habitual de 1,7 usado para classificar a ligação como <em>iônica</em>.</p><p>É mais estável para o sódio <em>perder</em> o elétron do que dividi-lo.</p>",
+    "<p>Os átomos se aproximam. O núcleo do cloro, com carga efetiva alta, começa a atrair o elétron 3s do sódio, que está longe e mal blindado.</p>",
+    "<p>O elétron <em>salta</em> do sódio para o cloro: é a <em>transferência eletrônica</em>. Acompanhe o ponto luminoso mudando de camada.</p><p>Formam-se dois íons com octeto: o cátion <em>Na⁺</em> (que ficou menor, pois perdeu uma camada inteira) e o ânion <em>Cl⁻</em> (que ficou maior, pela repulsão entre elétrons).</p>",
+    "<p>Cargas opostas se atraem por <em>força eletrostática</em>. Mas essa atração não tem direção preferencial: cada íon atrai vizinhos em todas as direções.</p><p>O resultado é um <em>retículo cristalino</em> cúbico, em que cada Na⁺ é cercado por 6 Cl⁻ e vice-versa. Por isso <em>não existe uma “molécula” de NaCl</em>: NaCl é apenas a proporção 1:1 dos íons.</p>",
+    "<p>Na ligação iônica a separação de cargas é <em>total</em>, não parcial. É o caso extremo de polaridade — a seta laranja mostra o deslocamento completo do elétron.</p><p>Esse arranjo explica as propriedades do sal: alto ponto de fusão (801 °C), fragilidade e condução de eletricidade apenas quando fundido ou dissolvido, quando os íons ficam livres.</p>",
+    "<p>Resumo do cloreto de sódio. Gire o cristal para observar como os íons se alternam em três dimensões.</p>"
+  ]
+}
+};
+
+const ORDER = ["h2o","co2","ch4","nh4","nacl"];
+const STEP_TITLES = ["Átomos isolados","Configuração eletrônica e hibridização",
+  "Aproximação e sobreposição dos orbitais","Formação das ligações σ e π",
+  "Geometria molecular (VSEPR)","Polaridade","Resumo da molécula"];
+const PHASES = ["isolated","hybrid","approach","bonds","geometry","polarity","summary"];
+
+/* ============================================================================
+   2. ESTADO DA APLICAÇÃO
+   ============================================================================ */
+const state = {
+  mol: MOLECULES.h2o,
+  step: 0,
+  playing:false,
+  speed:1,
+  autoAcc:0,
+  blend:1,          // progresso da transição entre etapas (0..1)
+  fromPos:null,     // posições no início da transição
+  toPos:null,
+  cur:null,         // posições interpoladas exibidas agora
+  rotX:-0.18, rotY:0.5,
+  dragging:false, lastPointer:null,
+  time:0,
+  transferT:0       // progresso da transferência de elétron (NaCl)
+};
+
+/* ============================================================================
+   3. MATEMÁTICA VETORIAL E PROJEÇÃO 3D
+   ============================================================================ */
+const v = {
+  add:(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]],
+  sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]],
+  mul:(a,k)=>[a[0]*k,a[1]*k,a[2]*k],
+  len:a=>Math.hypot(a[0],a[1],a[2]),
+  norm(a){const l=v.len(a)||1; return [a[0]/l,a[1]/l,a[2]/l];},
+  lerp:(a,b,t)=>[a[0]+(b[0]-a[0])*t, a[1]+(b[1]-a[1])*t, a[2]+(b[2]-a[2])*t],
+  cross:(a,b)=>[a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]
+};
+
+const canvas = document.getElementById("scene");
+const ctx = canvas.getContext("2d");
+let W=0, H=0, cx=0, cy=0, zoom=120;
+
+function resize(){
+  const dpr = Math.min(window.devicePixelRatio||1, 2);
+  const rect = canvas.getBoundingClientRect();
+  W = rect.width; H = rect.height;
+  canvas.width = Math.round(W*dpr); canvas.height = Math.round(H*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  cx = W/2; cy = H/2;
+  zoom = Math.max(58, Math.min(W,H)/4.6);   // enquadra a molécula em qualquer tela
+}
+new ResizeObserver(resize).observe(canvas);
+
+/* rotaciona no eixo Y e depois no X */
+function rot(p){
+  const cy_=Math.cos(state.rotY), sy=Math.sin(state.rotY);
+  const x1 = p[0]*cy_ + p[2]*sy;
+  const z1 = -p[0]*sy + p[2]*cy_;
+  const cx_=Math.cos(state.rotX), sx=Math.sin(state.rotX);
+  const y2 = p[1]*cx_ - z1*sx;
+  const z2 = p[1]*sx + z1*cx_;
+  return [x1,y2,z2];
+}
+/* projeção em perspectiva simples */
+const DIST = 9;
+function proj(p){
+  const r = rot(p);
+  const s = DIST/(DIST - r[2]);
+  return {x: cx + r[0]*zoom*s, y: cy - r[1]*zoom*s, z:r[2], s:s};
+}
+
+/* ============================================================================
+   4. LAYOUTS POR ETAPA
+   ============================================================================ */
+function phase(step){ return PHASES[step]; }
+
+function centroid(list){
+  const s=[0,0,0]; list.forEach(p=>{s[0]+=p[0];s[1]+=p[1];s[2]+=p[2];});
+  return v.mul(s,1/list.length);
+}
+
+function layoutFor(step){
+  const m = state.mol, ph = phase(step);
+  const finals = m.atoms.map(a=>a.pos);
+  const c = centroid(finals);
+  return m.atoms.map(a=>{
+    if(ph==="isolated" || ph==="hybrid") return a.far;
+    if(ph==="approach") return v.add(c, v.mul(v.sub(a.pos,c), 1.42)); // orbitais encostando
+    if(ph==="bonds")    return a.mid || a.pos;                        // antes do ajuste VSEPR
+    return a.pos;
+  });
+}
+
+function gotoStep(n, instant){
+  const m = state.mol;
+  n = Math.max(0, Math.min(6, n));
+  state.fromPos = state.cur ? state.cur.map(p=>p.slice()) : layoutFor(n);
+  state.step = n;
+  state.toPos = layoutFor(n);
+  state.blend = instant ? 1 : 0;
+  state.autoAcc = 0;
+  if(phase(n)!=="bonds") state.transferT = (n>3?1:0);
+  else state.transferT = 0;
+  updatePanel();
+}
+
+/* ============================================================================
+   5. PAINEL LATERAL
+   ============================================================================ */
+const $ = id=>document.getElementById(id);
+
+function orbitalDiagramHTML(h){
+  let html = `<div class="orbdiag"><p class="orbcap">${h.caption}</p>`;
+  h.stages.forEach((st,i)=>{
+    if(i) html += `<div class="orbarrow">↓</div>`;
+    html += `<div class="orbstage">`;
+    st.rows.forEach(r=>{
+      html += `<div class="orbrow"><div class="orbboxes">`;
+      r.boxes.forEach(n=>{
+        const fill = n===2 ? "↑↓" : n===1 ? "↑" : "";
+        html += `<div class="obox${r.hy?" hy":""}">${fill}</div>`;
+      });
+      html += `</div><span class="orblabel">${r.label}</span></div>`;
+    });
+    html += `</div><p class="orbcap" style="margin:6px 0 0">${st.cap}</p>`;
+  });
+  return html + `</div>`;
+}
+
+function summaryHTML(m){
+  const f = m.facts;
+  return `<div class="card">
+    <h3>Ficha da espécie ${m.formula}</h3>
+    <div class="struct">${m.struct}</div>
+    <dl>
+      <dt>Fórmula molecular</dt><dd>${m.formula}</dd>
+      <dt>Tipo de ligação</dt><dd>${f.ligacao}</dd>
+      <dt>Hibridização</dt><dd>${f.hibridizacao}</dd>
+      <dt>Geometria</dt><dd>${f.geometria}</dd>
+      <dt>Ângulo de ligação</dt><dd>${f.angulo}</dd>
+      <dt>Pares não ligantes</dt><dd>${f.pares}</dd>
+      <dt>Polaridade</dt><dd>${f.polaridade}</dd>
+    </dl></div>`;
+}
+
+function updatePanel(){
+  const m = state.mol, s = state.step;
+  const titles = m.stepTitles || STEP_TITLES;
+  $("stepKicker").textContent = `${m.name} · ${m.formula}`;
+  $("stepTitle").textContent = titles[s];
+  $("stepBody").innerHTML = m.notes[s];
+  $("stepNum").textContent = s+1;
+  $("progFill").style.width = ((s+1)/7*100)+"%";
+  let extra = "";
+  if(phase(s)==="hybrid" && m.hybrid) extra = orbitalDiagramHTML(m.hybrid);
+  if(phase(s)==="summary") extra = summaryHTML(m);
+  if(phase(s)==="polarity"){
+    extra = `<div class="card"><h3>Soma vetorial dos dipolos</h3><dl>
+      <dt>Resultante</dt><dd>${m.polar? "diferente de zero" : "igual a zero"}</dd>
+      <dt>Observação</dt><dd>${m.dipoleNote}</dd>
+      <dt>Classificação</dt><dd><span class="tag" style="color:${m.polar?"#ffb648":"#59e0d2"}">${m.facts.polaridade}</span></dd>
+    </dl></div>`;
+  }
+  $("extra").innerHTML = extra;
+  $("btnPrev").disabled = s===0;
+  $("btnNext").disabled = s===6;
+  document.querySelector(".panel-scroll").scrollTop = 0;
+}
+
+/* barra de moléculas */
+function buildMolBar(){
+  const bar = $("molBar");
+  bar.innerHTML = "";
+  ORDER.forEach(k=>{
+    const m = MOLECULES[k];
+    const b = document.createElement("button");
+    b.className="mol-chip"; b.type="button";
+    b.setAttribute("aria-pressed", String(k===state.mol.key));
+    b.innerHTML = `<span class="dot" style="color:${m.tint}"></span><b>${m.formula}</b><span class="sub">${m.subtitle}</span>`;
+    b.addEventListener("click", ()=>selectMolecule(k));
+    bar.appendChild(b);
+  });
+}
+function selectMolecule(k){
+  state.mol = MOLECULES[k];
+  state.cur = null;
+  state.rotX=-0.18; state.rotY=0.5;
+  gotoStep(0, true);
+  buildMolBar();
+  setPlaying(false);
+}
+
+/* legenda */
+function buildLegend(){
+  const items = [
+    ["#e8f1ff","round","Átomos (cor por elemento)"],
+    ["var(--sigma)","","Ligação sigma (σ)"],
+    ["var(--pi)","","Ligação pi (π)"],
+    ["var(--lone)","round","Par de elétrons não ligante"],
+    ["var(--dipole)","","Vetor momento dipolar"],
+    ["#dcb6ff","","Orbital híbrido"]
+  ];
+  $("legendList").innerHTML = items.map(([c,shape,t])=>
+    `<li><span class="sw ${shape}" style="background:${c}"></span>${t}</li>`).join("");
+}
+
+/* ============================================================================
+   6. DESENHO
+   ============================================================================ */
+function withGlow(color, blur, fn){
+  ctx.save(); ctx.shadowColor=color; ctx.shadowBlur=blur; fn(); ctx.restore();
+}
+
+function drawAtom(a, p3){
+  const E = ELEM[a.el], P = proj(p3);
+  const r = E.r*zoom*P.s*0.9;
+  const g = ctx.createRadialGradient(P.x-r*.35, P.y-r*.4, r*.15, P.x, P.y, r);
+  g.addColorStop(0, "#ffffff");
+  g.addColorStop(.35, E.color);
+  g.addColorStop(1, shade(E.color,-0.55));
+  ctx.save();
+  ctx.shadowColor = E.color; ctx.shadowBlur = 22*P.s;
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.arc(P.x,P.y,r,0,7); ctx.fill();
+  ctx.restore();
+  // símbolo
+  ctx.fillStyle = "#0a0f18"; ctx.font = `600 ${Math.max(10, r*0.95)}px Georgia, serif`;
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText(a.el, P.x, P.y+r*0.03);
+  // carga formal do íon
+  const charge = chargeOf(a);
+  if(charge){
+    ctx.fillStyle = charge==="+" ? "#ffd166" : "#7fd4ff";
+    ctx.font = `600 ${Math.max(12, r*0.8)}px Georgia, serif`;
+    ctx.fillText(charge, P.x + r*0.85, P.y - r*0.85);
+  }
+}
+function chargeOf(a){
+  const ph = phase(state.step);
+  if(!a.charge) return "";
+  if(state.mol.ionic) return (ph==="isolated"||ph==="hybrid"||ph==="approach") ? "" : a.charge;
+  return (ph==="isolated"||ph==="hybrid") ? a.charge : "";
+}
+function shade(hex,k){
+  const n = parseInt(hex.slice(1),16);
+  let r=(n>>16)&255, g=(n>>8)&255, b=n&255;
+  r=Math.round(r*(1+k)); g=Math.round(g*(1+k)); b=Math.round(b*(1+k));
+  const c=x=>Math.max(0,Math.min(255,x));
+  return `rgb(${c(r)},${c(g)},${c(b)})`;
+}
+
+/* elétrons girando em camadas */
+function drawShells(a, p3, idx){
+  const E = ELEM[a.el];
+  if(a.noElectrons) return;
+  const shells = E.shells;
+  shells.forEach((count, si)=>{
+    const isVal = si===shells.length-1;
+    const radius = E.r + .22 + si*.19;
+    const tilt = si*0.7 + idx*0.5;
+    // órbita (elipse projetada por amostragem)
+    ctx.beginPath();
+    for(let i=0;i<=48;i++){
+      const th = i/48*Math.PI*2;
+      const q = ringPoint(p3, radius, th, tilt);
+      const P = proj(q);
+      i? ctx.lineTo(P.x,P.y) : ctx.moveTo(P.x,P.y);
+    }
+    ctx.strokeStyle = isVal ? "rgba(127,212,255,.42)" : "rgba(140,165,195,.16)";
+    ctx.lineWidth = 1; ctx.stroke();
+    // elétrons
+    let n = count;
+    if(state.mol.ionic && a.el==="Na" && isVal) n = Math.max(0, count - Math.round(state.transferT));
+    if(state.mol.ionic && a.el==="Cl" && isVal) n = count + Math.round(state.transferT);
+    for(let i=0;i<n;i++){
+      const th = state.time*(isVal?0.9:0.55) + i*(Math.PI*2/Math.max(1,n)) + si;
+      const q = ringPoint(p3, radius, th, tilt);
+      const P = proj(q);
+      const rr = Math.max(1.8, 3.1*P.s);
+      withGlow(isVal?"#9fe0ff":"#8fa6c2", 10, ()=>{
+        ctx.fillStyle = isVal ? "#bfeaff" : "#8fa6c2";
+        ctx.beginPath(); ctx.arc(P.x,P.y,rr,0,7); ctx.fill();
+      });
+    }
+  });
+}
+function ringPoint(center, radius, th, tilt){
+  const x = Math.cos(th)*radius;
+  const y = Math.sin(th)*radius*Math.cos(tilt);
+  const z = Math.sin(th)*radius*Math.sin(tilt);
+  return [center[0]+x, center[1]+y, center[2]+z];
+}
+
+/* lobo de orbital híbrido (forma de gota) */
+function drawLobe(center, dir, len, color, alpha){
+  const c = proj(center), t = proj(v.add(center, v.mul(v.norm(dir), len)));
+  const dx=t.x-c.x, dy=t.y-c.y, L=Math.hypot(dx,dy);
+  if(L<2) return;
+  const px=-dy/L, py=dx/L, w=L*0.38;
+  const g = ctx.createLinearGradient(c.x,c.y,t.x,t.y);
+  g.addColorStop(0, "rgba(255,255,255,0)");
+  g.addColorStop(.55, color);
+  g.addColorStop(1, "rgba(255,255,255,.05)");
+  ctx.save(); ctx.globalAlpha = alpha;
+  ctx.fillStyle = g; ctx.shadowColor=color; ctx.shadowBlur=16;
+  ctx.beginPath();
+  ctx.moveTo(c.x,c.y);
+  ctx.quadraticCurveTo(c.x+dx*.55+px*w, c.y+dy*.55+py*w, t.x, t.y);
+  ctx.quadraticCurveTo(c.x+dx*.55-px*w, c.y+dy*.55-py*w, c.x, c.y);
+  ctx.fill(); ctx.restore();
+}
+
+/* ligação sigma */
+function drawSigma(p1,p2,c1,c2,alpha,dative){
+  const A=proj(p1), B=proj(p2);
+  const g = ctx.createLinearGradient(A.x,A.y,B.x,B.y);
+  if(dative){ g.addColorStop(0,"#ffd166"); g.addColorStop(1,"#ffe9ae"); }
+  else { g.addColorStop(0,c1); g.addColorStop(.5,"#59e0d2"); g.addColorStop(1,c2); }
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.strokeStyle = g;
+  ctx.lineWidth = Math.max(3, 11*((A.s+B.s)/2));
+  ctx.lineCap="round";
+  ctx.shadowColor = dative? "#ffd166" : "#59e0d2"; ctx.shadowBlur = 18;
+  if(dative) ctx.setLineDash([9,7]);
+  ctx.beginPath(); ctx.moveTo(A.x,A.y); ctx.lineTo(B.x,B.y); ctx.stroke();
+  ctx.restore();
+  if(dative){ // seta indicando o sentido da doação do par
+    const mx=(A.x+B.x)/2, my=(A.y+B.y)/2, ang=Math.atan2(B.y-A.y,B.x-A.x);
+    ctx.save(); ctx.globalAlpha=alpha; ctx.fillStyle="#ffd166";
+    ctx.translate(mx,my); ctx.rotate(ang);
+    ctx.beginPath(); ctx.moveTo(9,0); ctx.lineTo(-5,6); ctx.lineTo(-5,-6); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+}
+
+/* ligação pi: duas nuvens laterais */
+function drawPi(p1,p2,axis,alpha){
+  const ax = v.norm(axis);
+  [1,-1].forEach(sign=>{
+    ctx.save(); ctx.globalAlpha = alpha*0.75;
+    ctx.strokeStyle = "rgba(192,123,255,.85)";
+    ctx.lineWidth = Math.max(5, 13*proj(p1).s);
+    ctx.lineCap="round"; ctx.shadowColor="#c07bff"; ctx.shadowBlur=20;
+    ctx.beginPath();
+    for(let i=0;i<=24;i++){
+      const t=i/24;
+      const base = v.lerp(p1,p2,t);
+      const amp = Math.sin(Math.PI*t)*0.34*sign;
+      const P = proj(v.add(base, v.mul(ax, amp)));
+      i? ctx.lineTo(P.x,P.y) : ctx.moveTo(P.x,P.y);
+    }
+    ctx.stroke(); ctx.restore();
+  });
+}
+
+/* pares não ligantes */
+function drawLonePair(center, dir, alpha){
+  const d = v.norm(dir);
+  drawLobe(center, d, 0.72, "rgba(127,212,255,.5)", alpha*0.75);
+  const perp = v.norm(v.cross(d, [0,0,1]).some(x=>x) ? v.cross(d,[0,0,1]) : v.cross(d,[0,1,0]));
+  [-1,1].forEach(s=>{
+    const q = v.add(v.add(center, v.mul(d,0.62)), v.mul(perp, 0.11*s));
+    const P = proj(q);
+    ctx.save(); ctx.globalAlpha=alpha; ctx.shadowColor="#7fd4ff"; ctx.shadowBlur=12;
+    ctx.fillStyle="#cdeeff";
+    ctx.beginPath(); ctx.arc(P.x,P.y,Math.max(2,3.4*P.s),0,7); ctx.fill(); ctx.restore();
+  });
+}
+
+/* seta vetorial (dipolo) */
+function drawVector(from, to, color, alpha, label, crossTail){
+  const A=proj(from), B=proj(to);
+  const ang=Math.atan2(B.y-A.y,B.x-A.x), L=Math.hypot(B.x-A.x,B.y-A.y);
+  if(L<4) return;
+  ctx.save(); ctx.globalAlpha=alpha; ctx.strokeStyle=color; ctx.fillStyle=color;
+  ctx.lineWidth=2.6; ctx.shadowColor=color; ctx.shadowBlur=12;
+  ctx.translate(A.x,A.y); ctx.rotate(ang);
+  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(L-9,0); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(L,0); ctx.lineTo(L-11,5.5); ctx.lineTo(L-11,-5.5); ctx.closePath(); ctx.fill();
+  if(crossTail){ ctx.beginPath(); ctx.moveTo(0,-6); ctx.lineTo(0,6); ctx.stroke(); }
+  ctx.restore();
+  if(label){
+    ctx.save(); ctx.globalAlpha=alpha; ctx.fillStyle=color;
+    ctx.font="600 13px Georgia, serif"; ctx.textAlign="center"; ctx.textBaseline="bottom";
+    ctx.fillText(label, (A.x+B.x)/2, (A.y+B.y)/2 - 8); ctx.restore();
+  }
+}
+
+/* arco de ângulo entre duas ligações */
+function drawAngle(vtx, pa, pb, label, alpha){
+  const V=proj(vtx), A=proj(pa), B=proj(pb);
+  const a1=Math.atan2(A.y-V.y,A.x-V.x), a2=Math.atan2(B.y-V.y,B.x-V.x);
+  const r=Math.min(52, Math.hypot(A.x-V.x,A.y-V.y)*0.5);
+  let d=a2-a1; while(d<-Math.PI)d+=2*Math.PI; while(d>Math.PI)d-=2*Math.PI;
+  ctx.save(); ctx.globalAlpha=alpha; ctx.strokeStyle="#ffd166"; ctx.lineWidth=1.8;
+  ctx.setLineDash([4,4]);
+  ctx.beginPath(); ctx.arc(V.x,V.y,r,a1,a1+d,d<0); ctx.stroke();
+  ctx.setLineDash([]);
+  const mid=a1+d/2;
+  ctx.fillStyle="#ffe6a8"; ctx.font="600 14px Georgia, serif";
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText(label, V.x+Math.cos(mid)*(r+20), V.y+Math.sin(mid)*(r+20));
+  ctx.restore();
+}
+
+/* retículo cristalino do NaCl (etapa final) */
+function drawLattice(alpha){
+  const sp=0.78, n=1;   // 3×3×3 íons
+  const items=[];
+  for(let i=-n;i<=n;i++) for(let j=-n;j<=n;j++) for(let k=-n;k<=n;k++){
+    const el = ((i+j+k)&1) ? "Cl" : "Na";
+    const p=[i*sp,j*sp,k*sp];
+    items.push({el,p,P:proj(p)});
+  }
+  items.sort((a,b)=>a.P.z-b.P.z);
+  // varetas entre vizinhos
+  ctx.save(); ctx.globalAlpha=alpha*0.5; ctx.strokeStyle="rgba(150,180,220,.5)"; ctx.lineWidth=1.4;
+  items.forEach(it=>{
+    [[sp,0,0],[0,sp,0],[0,0,sp]].forEach(d=>{
+      const q=v.add(it.p,d);
+      if(Math.max(...q.map(Math.abs))<=sp*n+1e-6){
+        const A=it.P,B=proj(q);
+        ctx.beginPath(); ctx.moveTo(A.x,A.y); ctx.lineTo(B.x,B.y); ctx.stroke();
+      }
+    });
+  });
+  ctx.restore();
+  items.forEach(it=>{
+    const E=ELEM[it.el], P=it.P, r=(it.el==="Na"?.22:.34)*zoom*P.s;
+    ctx.save(); ctx.globalAlpha=alpha;
+    ctx.shadowColor=E.color; ctx.shadowBlur=14;
+    const g=ctx.createRadialGradient(P.x-r*.35,P.y-r*.4,r*.1,P.x,P.y,r);
+    g.addColorStop(0,"#fff"); g.addColorStop(.4,E.color); g.addColorStop(1,shade(E.color,-.5));
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(P.x,P.y,r,0,7); ctx.fill();
+    ctx.restore();
+  });
+  ctx.save(); ctx.globalAlpha=alpha; ctx.fillStyle="#cddaea"; ctx.font="13px Georgia, serif";
+  ctx.textAlign="center"; ctx.fillText("Retículo cúbico: cada íon é cercado por 6 vizinhos de carga oposta", cx, H-26);
+  ctx.restore();
+}
+
+/* ============================================================================
+   7. CENA COMPLETA
+   ============================================================================ */
+const easeInOut = t => t<.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
+
+function drawScene(){
+  ctx.clearRect(0,0,W,H);
+  const m=state.mol, ph=phase(state.step), pos=state.cur;
+  if(!pos) return;
+
+  // NaCl: cristal substitui o par isolado de íons na etapa final
+  if(m.ionic && ph==="summary"){ drawLattice(1); return; }
+
+  const showHybrid   = (ph==="hybrid"||ph==="approach") && m.hybridDirs;
+  const bondAlpha    = ph==="isolated"||ph==="hybrid" ? 0
+                     : ph==="approach" ? 0.18 : 1;
+  const showShells   = ph==="isolated"||ph==="hybrid"||ph==="approach"
+                     || (m.ionic && (ph==="bonds"||ph==="geometry"||ph==="polarity"));
+  const showLone     = ph!=="isolated";
+  const showAngles   = ph==="geometry"||ph==="polarity"||ph==="summary";
+  const showDipoles  = ph==="polarity"||ph==="summary";
+
+  // 1) orbitais híbridos
+  if(showHybrid){
+    const hd = m.hybridDirs, c = pos[hd.atom];
+    const pulse = 0.75 + 0.2*Math.sin(state.time*1.6);
+    hd.dirs.forEach(d=>drawLobe(c, d, 0.95, "rgba(220,182,255,.55)", pulse*(ph==="approach"?.55:1)));
+  }
+
+  // 2) ligações (ordenadas por profundidade junto com os átomos)
+  const items=[];
+  if(bondAlpha>0 && !m.ionic){
+    m.bonds.forEach(b=>{
+      const p1=pos[b.a], p2=pos[b.b];
+      const zmid = rot(v.lerp(p1,p2,.5))[2];
+      items.push({z:zmid, draw:()=>{
+        drawSigma(p1,p2, ELEM[m.atoms[b.a].el].color, ELEM[m.atoms[b.b].el].color, bondAlpha, b.dative);
+        if(b.order===2 && ph!=="approach") drawPi(p1,p2,b.piAxis,bondAlpha);
+      }});
+    });
+  }
+  if(m.ionic && (ph==="geometry"||ph==="polarity")){
+    const p1=pos[0],p2=pos[1];
+    items.push({z:rot(v.lerp(p1,p2,.5))[2], draw:()=>{
+      const A=proj(p1),B=proj(p2);
+      ctx.save(); ctx.globalAlpha=.8; ctx.strokeStyle="rgba(255,209,102,.75)";
+      ctx.lineWidth=2; ctx.setLineDash([3,7]); ctx.shadowColor="#ffd166"; ctx.shadowBlur=12;
+      ctx.beginPath(); ctx.moveTo(A.x,A.y); ctx.lineTo(B.x,B.y); ctx.stroke();
+      ctx.setLineDash([]); ctx.fillStyle="#ffe6a8"; ctx.font="13px Georgia, serif"; ctx.textAlign="center";
+      ctx.fillText("atração eletrostática", (A.x+B.x)/2, (A.y+B.y)/2-14); ctx.restore();
+    }});
+  }
+
+  // 3) átomos + camadas
+  m.atoms.forEach((a,i)=>{
+    const p=pos[i];
+    items.push({z:rot(p)[2], draw:()=>{
+      if(showShells) drawShells(a,p,i);
+      drawAtom(a,p);
+    }});
+  });
+
+  // 4) pares não ligantes
+  if(showLone) m.lonePairs.forEach(lp=>{
+    if(lp.onlyUntilStep!==undefined && state.step>=lp.onlyUntilStep) return;
+    lp.dirs.forEach(d=>{
+      const c=pos[lp.atom];
+      items.push({z:rot(v.add(c,v.mul(v.norm(d),.6)))[2], draw:()=>drawLonePair(c,d,0.95)});
+    });
+  });
+
+  items.sort((a,b)=>a.z-b.z).forEach(it=>it.draw());
+
+  // 5) elétron em trânsito (NaCl, etapa de transferência)
+  if(m.ionic && phase(state.step)==="bonds"){
+    const t=state.transferT;
+    const from=v.add(pos[0],[0,.62,0]), to=v.add(pos[1],[0,.62,0]);
+    const p=v.lerp(from,to,t);
+    p[1]+=Math.sin(Math.PI*t)*0.45;
+    const P=proj(p);
+    withGlow("#bfeaff",22,()=>{ctx.fillStyle="#eaf8ff"; ctx.beginPath(); ctx.arc(P.x,P.y,5.5,0,7); ctx.fill();});
+    ctx.save(); ctx.fillStyle="#bfeaff"; ctx.font="13px Georgia, serif"; ctx.textAlign="center";
+    ctx.fillText("elétron 3s¹", P.x, P.y-16); ctx.restore();
+  }
+
+  // 6) ângulos de ligação
+  if(showAngles) m.angles.forEach(an=>drawAngle(pos[an.v],pos[an.a],pos[an.b],an.label,0.95));
+
+  // 7) vetores de dipolo e resultante
+  if(showDipoles) drawDipoles(pos);
+
+  // 8) rótulos σ/π na etapa de ligações
+  if(ph==="bonds" && !m.ionic){
+    m.bonds.forEach(b=>{
+      const P=proj(v.lerp(pos[b.a],pos[b.b],.5));
+      ctx.save(); ctx.font="600 13px Georgia, serif"; ctx.textAlign="center";
+      ctx.fillStyle="#a9f4ea"; ctx.fillText(b.dative?"σ dativa":"σ", P.x, P.y-14);
+      if(b.order===2){ ctx.fillStyle="#dcb6ff"; ctx.fillText("π", P.x, P.y+26); }
+      ctx.restore();
+    });
+  }
+}
+
+function drawDipoles(pos){
+  const m=state.mol;
+  let sum=[0,0,0];
+  if(m.ionic){
+    const d=v.norm(v.sub(pos[1],pos[0]));
+    drawVector(v.add(pos[0],v.mul(d,.35)), v.add(pos[0],v.mul(d,1.6)), "#ffb648", 1, "μ (transferência total)", true);
+    return;
+  }
+  m.bonds.forEach(b=>{
+    const A=m.atoms[b.a], B=m.atoms[b.b];
+    const enA=ELEM[A.el].en, enB=ELEM[B.el].en;
+    if(Math.abs(enA-enB)<0.05) return;
+    const fromIdx = enA<enB ? b.a : b.b;   // sai do menos eletronegativo
+    const toIdx   = enA<enB ? b.b : b.a;
+    const p1=pos[fromIdx], p2=pos[toIdx];
+    const dir=v.norm(v.sub(p2,p1));
+    const start=v.lerp(p1,p2,.18), end=v.lerp(p1,p2,.88);
+    drawVector(start,end,"#ffb648",.95,null,true);
+    sum = v.add(sum, v.mul(dir, Math.abs(enA-enB)));
+  });
+  const c = centroid(pos);
+  const mag = v.len(sum);
+  if(mag>0.05){
+    const d=v.mul(v.norm(sum), 1.25);
+    drawVector(c, v.add(c,d), "#ffd166", 1, "μ resultante", true);
+  }else{
+    const P=proj(c);
+    ctx.save(); ctx.fillStyle="#59e0d2"; ctx.font="600 15px Georgia, serif"; ctx.textAlign="center";
+    ctx.shadowColor="#59e0d2"; ctx.shadowBlur=12;
+    ctx.fillText("μ resultante = 0  →  apolar", P.x, P.y - zoom*0.95);
+    ctx.restore();
+  }
+}
+
+/* ============================================================================
+   8. LOOP DE ANIMAÇÃO
+   ============================================================================ */
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(64, now-last); last=now;
+  state.time += dt/1000;
+
+  // transição suave entre layouts
+  if(state.blend<1){
+    state.blend = Math.min(1, state.blend + dt/(900/state.speed));
+  }
+  const t=easeInOut(state.blend);
+  state.cur = state.toPos.map((p,i)=>v.lerp(state.fromPos[i]||p, p, t));
+
+  // transferência do elétron no NaCl
+  if(state.mol.ionic && phase(state.step)==="bonds" && state.transferT<1){
+    state.transferT = Math.min(1, state.transferT + dt/(1800/state.speed));
+  }
+
+  // rotação lenta quando a molécula já está montada
+  if(!state.dragging && state.step>=4) state.rotY += dt/1000*0.16;
+
+  // modo automático
+  if(state.playing && state.blend>=1){
+    state.autoAcc += dt;
+    if(state.autoAcc > 3500/state.speed){
+      if(state.step<6) gotoStep(state.step+1);
+      else setPlaying(false);
+    }
+  }
+  drawScene();
+  requestAnimationFrame(frame);
+}
+
+/* ============================================================================
+   9. INTERAÇÃO
+   ============================================================================ */
+function setPlaying(p){
+  state.playing=p; state.autoAcc=0;
+  $("btnPlay").innerHTML = p ? "❚❚ Pausar" : "▶ Automático";
+  $("btnPlay").classList.toggle("primary", !p);
+}
+$("btnPlay").addEventListener("click", ()=>{
+  if(!state.playing && state.step===6) gotoStep(0,true);
+  setPlaying(!state.playing);
+});
+$("btnNext").addEventListener("click", ()=>{ setPlaying(false); gotoStep(state.step+1); });
+$("btnPrev").addEventListener("click", ()=>{ setPlaying(false); gotoStep(state.step-1); });
+$("btnReset").addEventListener("click", ()=>{
+  setPlaying(false); state.cur=null; state.rotX=-0.18; state.rotY=0.5; gotoStep(0,true);
+});
+$("btnTop").addEventListener("click", ()=>{
+  window.scrollTo({top:0,behavior:"smooth"});
+  document.querySelector("#molBar .mol-chip").focus();
+});
+$("speedSeg").addEventListener("click", e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  state.speed = parseFloat(b.dataset.speed);
+  [...e.currentTarget.children].forEach(x=>x.setAttribute("aria-pressed", String(x===b)));
+});
+
+/* arraste para girar */
+function pointerDown(e){
+  state.dragging=true; canvas.classList.add("dragging");
+  state.lastPointer={x:e.clientX,y:e.clientY};
+  canvas.setPointerCapture(e.pointerId);
+}
+function pointerMove(e){
+  if(!state.dragging) return;
+  const dx=e.clientX-state.lastPointer.x, dy=e.clientY-state.lastPointer.y;
+  state.rotY += dx*0.008;
+  state.rotX = Math.max(-1.35, Math.min(1.35, state.rotX + dy*0.008));
+  state.lastPointer={x:e.clientX,y:e.clientY};
+}
+function pointerUp(){ state.dragging=false; canvas.classList.remove("dragging"); }
+canvas.addEventListener("pointerdown", pointerDown);
+canvas.addEventListener("pointermove", pointerMove);
+canvas.addEventListener("pointerup", pointerUp);
+canvas.addEventListener("pointercancel", pointerUp);
+
+document.addEventListener("keydown", e=>{
+  if(e.target.tagName==="INPUT") return;
+  if(e.key==="ArrowRight"){ setPlaying(false); gotoStep(state.step+1); }
+  if(e.key==="ArrowLeft"){ setPlaying(false); gotoStep(state.step-1); }
+  if(e.key===" "){ e.preventDefault(); $("btnPlay").click(); }
+});
+
+/* ============================================================================
+   10. INICIALIZAÇÃO
+   ============================================================================ */
+buildMolBar();
+buildLegend();
+resize();
+gotoStep(0,true);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
